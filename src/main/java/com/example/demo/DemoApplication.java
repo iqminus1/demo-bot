@@ -15,11 +15,8 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 @RequiredArgsConstructor
 public class DemoApplication {
 
-    @SneakyThrows
     public static void main(String[] args) {
         SpringApplication.run(DemoApplication.class, args);
-        TelegramBotsApi api = new TelegramBotsApi(DefaultBotSession.class);
-        api.registerBot(new BotService());
     }
 
     @Bean

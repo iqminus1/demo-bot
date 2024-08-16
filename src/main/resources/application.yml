@@ -1,0 +1,11 @@
+server:
+  port: 80
+spring:
+  datasource:
+    username: postgres
+    password: 123
+    url: jdbc:postgresql://localhost:5432/demo_telegram_bot_db
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
