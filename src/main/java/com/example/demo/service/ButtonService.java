@@ -8,7 +8,7 @@ import java.util.Map;
 public interface ButtonService {
     ReplyKeyboard withString(List<String> buttons, int rowSize);
 
-    ReplyKeyboard callbackKeyboard(Map<String, String> textData, int rowSize);
+    ReplyKeyboard callbackKeyboard(List<Map<String, String>> textData, int rowSize, boolean incremented);
 
     ReplyKeyboard withData(List<String> buttons, int rowSize);
 }

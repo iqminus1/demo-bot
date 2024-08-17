@@ -39,22 +39,29 @@ public class ButtonServiceImpl implements ButtonService {
     }
 
     @Override
-    public ReplyKeyboard callbackKeyboard(Map<String, String> textData, int rowSize) {
+    public ReplyKeyboard callbackKeyboard(List<Map<String, String>> textData, int rowSize, boolean incremented) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
 
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
         List<InlineKeyboardButton> row = new ArrayList<>();
         int i = 1;
-        for (String text : textData.keySet()) {
-            InlineKeyboardButton button = new InlineKeyboardButton(text);
-            button.setCallbackData(textData.get(text));
-            row.add(button);
+        for (Map<String, String> map : textData) {
+
+            for (String text : map.keySet()) {
+                InlineKeyboardButton button = new InlineKeyboardButton();
+                button.setCallbackData(map.get(text));
+                if (incremented) text = i + ". " + text;
+                button.setText(text);
+                row.add(button);
+            }
+
             if (rowSize % i == 0) {
                 rows.add(row);
                 row = new ArrayList<>();
                 i = 0;
             }
             i++;
+
         }
         markup.setKeyboard(rows);
         return markup;
