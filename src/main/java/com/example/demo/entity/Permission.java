@@ -11,7 +11,7 @@ import java.sql.Timestamp;
 @Setter
 @Getter
 @ToString
-@Entity
+@Entity()
 public class Permission {
     @Id
     private Long chatId;

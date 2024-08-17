@@ -12,13 +12,15 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 public class BotService extends TelegramLongPollingBot {
     private final MessageService messageService;
     private final CallbackService callbackService;
+    private final ChatMemberService chatMemberService;
 
 
     @SneakyThrows
-    public BotService(MessageService messageService, CallbackService callbackService) {
+    public BotService(MessageService messageService, CallbackService callbackService, ChatMemberService chatMemberService) {
         super(new DefaultBotOptions(), "7320858493:AAFtIOr8bofMTKFuMjegu8SVuxxrdTMYagI");
         this.messageService = messageService;
         this.callbackService = callbackService;
+        this.chatMemberService = chatMemberService;
         TelegramBotsApi api = new TelegramBotsApi(DefaultBotSession.class);
         api.registerBot(this);
 
@@ -30,6 +32,8 @@ public class BotService extends TelegramLongPollingBot {
             messageService.process(update.getMessage());
         } else if (update.hasCallbackQuery()) {
             callbackService.process(update.getCallbackQuery());
+        } else if (update.hasMyChatMember()) {
+            chatMemberService.process(update.getMyChatMember());
         }
     }
 

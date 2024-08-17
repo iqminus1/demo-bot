@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import org.telegram.telegrambots.bots.DefaultAbsSender;
 import org.telegram.telegrambots.bots.DefaultBotOptions;
+import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatAdministrators;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
@@ -34,5 +35,17 @@ public class BotSender extends DefaultAbsSender {
             throw new RuntimeException(e);
         }
     }
+
+    public Long getOwner(Long chatId) {
+        GetChatAdministrators getChatAdministrators = new GetChatAdministrators();
+        getChatAdministrators.setChatId(chatId);
+
+        try {
+            return execute(getChatAdministrators).stream().filter(a -> a.getStatus().equals("creator")).map(a -> a.getUser().getId()).findFirst().orElseThrow();
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 
 }

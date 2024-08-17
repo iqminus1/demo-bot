@@ -5,8 +5,8 @@ import com.example.demo.entity.Permission;
 import com.example.demo.entity.User;
 import com.example.demo.enums.StateEnum;
 import com.example.demo.repository.DontPayPermissionRepository;
+import com.example.demo.repository.GroupRepository;
 import com.example.demo.repository.PermissionRepository;
-import com.example.demo.repository.UserGroupRepository;
 import com.example.demo.utils.AppConstant;
 import com.example.demo.utils.CommonUtils;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +29,7 @@ public class MessageServiceImpl implements MessageService {
     private final BotSender botSender;
     private final DontPayPermissionRepository dontPayPermissionRepository;
     private final PermissionRepository permissionRepository;
-    private final UserGroupRepository userGroupRepository;
+    private final GroupRepository groupRepository;
 
     @Override
     public void process(Message message) {
@@ -117,7 +117,7 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public ReplyKeyboard start(Long chatId) {
         List<String> buttons = new ArrayList<>();
-        if (userGroupRepository.findById(chatId).isPresent()) {
+        if (groupRepository.findByUserId(chatId).isPresent()) {
             buttons.add(AppConstant.MY_GROUPS);
         }
         if (dontPayPermissionRepository.findById(chatId).isPresent()) {
