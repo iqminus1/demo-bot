@@ -1,16 +1,19 @@
 package com.example.demo.service;
 
 import com.example.demo.entity.DontPayPermission;
+import com.example.demo.entity.JoinRequest;
 import com.example.demo.entity.Permission;
 import com.example.demo.entity.User;
 import com.example.demo.enums.StateEnum;
 import com.example.demo.repository.DontPayPermissionRepository;
 import com.example.demo.repository.GroupRepository;
+import com.example.demo.repository.JoinRequestRepository;
 import com.example.demo.repository.PermissionRepository;
 import com.example.demo.utils.AppConstant;
 import com.example.demo.utils.CommonUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 
@@ -18,7 +21,9 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @RequiredArgsConstructor
 @Service
@@ -30,6 +35,7 @@ public class MessageServiceImpl implements MessageService {
     private final DontPayPermissionRepository dontPayPermissionRepository;
     private final PermissionRepository permissionRepository;
     private final GroupRepository groupRepository;
+    private final JoinRequestRepository joinRequestRepository;
 
     @Override
     public void process(Message message) {
@@ -39,22 +45,37 @@ public class MessageServiceImpl implements MessageService {
             if (user.getState().equals(StateEnum.ACTIVATE_BOT)) {
                 checkCode(message);
             }
-            switch (text) {
-                case "/start":
-                    start(message);
-                    break;
-                case AppConstant.BUY_PERMISSION:
-                    if (user.getState().equals(StateEnum.START))
+            if (text.equals("/start"))
+                start(message);
+            else if (user.getState().equals(StateEnum.START)) {
+                switch (text) {
+                    case AppConstant.BUY_PERMISSION:
                         buyPermission(message);
-                    break;
-                case AppConstant.ACTIVATION_CODE:
-                    if (user.getState().equals(StateEnum.START))
+                        break;
+                    case AppConstant.ACTIVATION_CODE:
                         activateBot(message);
-                    break;
+                        break;
+                    case AppConstant.CHANNEL_LIST:
+                        showRequestList(message);
+                        break;
+                    case AppConstant.MY_GROUPS:
+                        myGroup(message);
+                        break;
+                }
             }
+
 
         }
 
+    }
+
+    private void myGroup(Message message) {
+        botSender.exe(AppConstant.DONT_COMPLATED, message.getChatId(), null);
+    }
+
+    private void showRequestList(Message message) {
+        SendMessage sendMessage = showUserRequests(message.getChatId());
+        botSender.exe(sendMessage);
     }
 
     private void checkCode(Message message) {
@@ -104,7 +125,6 @@ public class MessageServiceImpl implements MessageService {
     }
 
     private void buyPermission(Message message) {
-        commonUtils.setState(message.getChatId(), StateEnum.BUY_PERMISSION);
         ReplyKeyboard replyKeyboard = buttonService.withData(List.of(AppConstant.ONE_MONTH, AppConstant.SIX_MONTH, AppConstant.ONE_YEAR), 2);
         botSender.exe(AppConstant.BUY_PERMISSION_DESCRIPTION, message.getChatId(), replyKeyboard);
     }
@@ -117,6 +137,9 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public ReplyKeyboard start(Long chatId) {
         List<String> buttons = new ArrayList<>();
+        if (!joinRequestRepository.findAllByUserId(chatId).isEmpty()) {
+            buttons.add(AppConstant.CHANNEL_LIST);
+        }
         if (groupRepository.findByUserId(chatId).isPresent()) {
             buttons.add(AppConstant.MY_GROUPS);
         }
@@ -125,5 +148,31 @@ public class MessageServiceImpl implements MessageService {
         }
         buttons.add(AppConstant.BUY_PERMISSION);
         return buttonService.withString(buttons, 1);
+    }
+
+    @Override
+    public SendMessage showUserRequests(Long chatId) {
+        List<JoinRequest> requests = joinRequestRepository.findAllByUserId(chatId);
+        if (requests.isEmpty()) {
+            throw new RuntimeException();
+        }
+        StringBuilder sb = new StringBuilder();
+        List<Map<String, String>> list = new ArrayList<>();
+        AtomicInteger i = new AtomicInteger(1);
+        requests.forEach(r -> {
+            sb.append(i.getAndIncrement()).append(". ");
+            sb.append(botSender.getChatName(r.getGroupId()).getTitle()).append("\n-----------------\n");
+
+            list.add(Map.of(
+                    AppConstant.TEXT_BUY, AppConstant.DATA_BUY + r.getGroupId(),
+                    AppConstant.TEXT_ABOUT_PRICE, AppConstant.DATA_ABOUT_PRICE + r.getGroupId(),
+                    AppConstant.TEXT_REMOVE, AppConstant.DATA_REMOVE + r.getGroupId()));
+        });
+        ReplyKeyboard replyKeyboard = buttonService.callbackKeyboard(list, 1, true);
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(chatId);
+        sendMessage.setText(AppConstant.CHANNEL_LIST_SHOW_TEXT + "\n\n" + sb);
+        sendMessage.setReplyMarkup(replyKeyboard);
+        return sendMessage;
     }
 }
