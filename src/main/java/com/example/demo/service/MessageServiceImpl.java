@@ -152,6 +152,9 @@ public class MessageServiceImpl implements MessageService {
         List<Map<String, String>> list = new ArrayList<>();
         AtomicInteger i = new AtomicInteger(1);
         requests.forEach(r -> {
+            if (stopManageBotRepository.findByGroupId(r.getGroupId()).isPresent()) {
+                return;
+            }
             sb.append(i.getAndIncrement()).append(". ");
             sb.append(botSender.getChatName(r.getGroupId()).getTitle()).append("\n-----------------\n");
 
@@ -178,10 +181,10 @@ public class MessageServiceImpl implements MessageService {
         AtomicInteger i = new AtomicInteger(1);
         StringBuilder sb = new StringBuilder();
         List<Map<String, String>> list = new ArrayList<>();
-        Map<String, String> map = new HashMap<>();
         for (Group group : groups) {
+            Map<String, String> map = new HashMap<>();
             Optional<StopManageBot> optionalStopManageBot = stopManageBotRepository.findByGroupId(group.getGroupId());
-            sb.append(i.getAndIncrement()).append(" ").append(botSender.getChatName(group.getGroupId()).getTitle());
+            sb.append(i.getAndIncrement()).append(" ").append(botSender.getChatName(group.getGroupId()).getTitle()).append("\n");
 
             map.put(AppConstant.TEXT_CHANGE_PRICE,
                     AppConstant.DATA_CHANGE_PRICE + group.getGroupId());
@@ -190,6 +193,7 @@ public class MessageServiceImpl implements MessageService {
                 map.put(
                         AppConstant.TEXT_STOP_MANAGE_GROUP,
                         AppConstant.DATA_STOP_MANAGE_GROUP + group.getGroupId());
+                list.add(map);
                 continue;
             }
             sb.append(" ").append(AppConstant.STOPED_MANAGE_BOT);
@@ -197,8 +201,8 @@ public class MessageServiceImpl implements MessageService {
                     AppConstant.TEXT_START_MANAGE_GROUP,
                     AppConstant.DATA_START_MANAGE_GROUP + group.getGroupId());
 
+            list.add(map);
         }
-        list.add(map);
         ReplyKeyboard replyKeyboard = buttonService.callbackKeyboard(list, 1, false);
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(chatId);

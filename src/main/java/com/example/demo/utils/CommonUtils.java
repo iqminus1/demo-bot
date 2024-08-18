@@ -9,15 +9,14 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @RequiredArgsConstructor
 @Component
 @EnableScheduling
 public class CommonUtils {
+    public static Map<Long, Long> setPrice = new HashMap<>();
     private final UserRepository userRepository;
 
     private final List<User> users = Collections.synchronizedList(new ArrayList<>());
@@ -28,13 +27,21 @@ public class CommonUtils {
     }
 
     public User getUser(Long chatId) {
-        return users.stream().filter(u -> u.getId().equals(chatId))
-                .findFirst().orElseGet(() -> {
-                    User user = new User(chatId, StateEnum.START);
-                    userRepository.save(user);
-                    users.add(user);
-                    return user;
-                });
+        User user = users.stream()
+                .filter(u -> u.getId().equals(chatId))
+                .findFirst()
+                .orElse(null);
+
+        if (user == null) {
+            user = userRepository.findById(chatId)
+                    .orElseGet(() -> {
+                        User newUser = new User(chatId, StateEnum.START);
+                        userRepository.save(newUser);
+                        users.add(newUser);
+                        return newUser;
+                    });
+        }
+        return user;
     }
 
     @Scheduled(fixedRate = 20, timeUnit = TimeUnit.MINUTES)

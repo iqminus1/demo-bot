@@ -6,7 +6,6 @@ import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.objects.ChatMemberUpdated;
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -28,12 +27,19 @@ public class ChatMemberServiceImpl implements ChatMemberService {
             if (Objects.equals(newChatMember.getUser().getUserName(), "manager_groups_v1_bot")) {
                 if (newChatMember.getStatus().equals("left"))
                     deleteFromUserGroup(chatMember);
-                else if (List.of("member", "administrator").contains(newChatMember.getStatus()))
+                else if (Objects.equals("member", newChatMember.getStatus()))
+                    removeFromUserGroup(chatMember);
+                else if (Objects.equals("administrator", newChatMember.getStatus()))
                     addToUserGroup(chatMember);
             }
         }
 
 
+    }
+
+    private void removeFromUserGroup(ChatMemberUpdated chatMember) {
+        Long groupId = chatMember.getChat().getId();
+        groupRepository.findByGroupId(groupId).ifPresent(groupRepository::delete);
     }
 
     private void deleteFromUserGroup(ChatMemberUpdated chatMember) {
