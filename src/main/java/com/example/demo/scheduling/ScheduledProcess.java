@@ -42,8 +42,8 @@ public class ScheduledProcess {
 
     @Scheduled(fixedDelay = 45, timeUnit = TimeUnit.MINUTES)
     private void checkCreators() {
-        groupRepository.findAll().stream()
-                .peek(g -> {
+        groupRepository.findAll()
+                .forEach(g -> {
                     Long owner = botSender.getOwner(g.getGroupId());
                     if (!owner.equals(g.getUserId())) {
                         g.setUserId(owner);

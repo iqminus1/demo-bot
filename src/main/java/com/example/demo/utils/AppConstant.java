@@ -22,8 +22,9 @@ public interface AppConstant {
     String PRICE_NULL = "Бесплатно на месяц";
     String MY_MISTAKE = "От вас просим прощения я что то делал не так этот канал не платил что бы за ему бот работал";
     String WITH_PRICE = "Выберите который вам нужно";
-    String DONT_COMPLATED=  "Пункт еще не готов к работу";
+    String DONT_COMPLATED = "Пункт еще не готов к работу";
     String DONT_FREE = "Платный режим еще не готов";
+    String DONT_HAVE_GROUPS = "Вы не гл.Админ который бот добавлен или попробуйте после час";
 
 
     String TEXT_BUY = "Купить доступ ";
@@ -35,4 +36,12 @@ public interface AppConstant {
     String BACK_TEXT = "Back";
     String BACK_DATA = "back:";
     String DATA_BACK_SHOW_REQUESTS = "showUserRequests";
+    String DATA_USER_GROUPS = "userGroups:";
+    String TEXT_CHANGE_PRICE = "Изменить цена";
+    String DATA_CHANGE_PRICE = "changePrice:";
+    String DATA_STOP_MANAGE_GROUP = "stopManageBot:";
+    String TEXT_STOP_MANAGE_GROUP = "Ост. бот";
+    String STOPED_MANAGE_BOT = " бот для него не работает";
+    String TEXT_START_MANAGE_GROUP = "Старт бот";
+    String DATA_START_MANAGE_GROUP = "startManageBot:";
 }
