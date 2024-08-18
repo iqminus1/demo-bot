@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static com.example.demo.utils.CommonUtils.setPrice;
+
 @Service
 @RequiredArgsConstructor
 public class CallbackServiceImpl implements CallbackService {
@@ -74,6 +76,15 @@ public class CallbackServiceImpl implements CallbackService {
     }
 
     private void changePrice(CallbackQuery callbackQuery) {
+        Long groupId = Long.parseLong(callbackQuery.getData().split(":")[1]);
+        setPrice.put(callbackQuery.getFrom().getId(), groupId);
+
+        commonUtils.setState(callbackQuery.getFrom().getId(), StateEnum.CHANGE_PRICE);
+        Group group = groupRepository.findByGroupId(groupId).orElseThrow();
+        botSender.changeText(AppConstant.SHOW_GROUP_PRICE + group.getPriceForMonth(), callbackQuery.getFrom().getId(), callbackQuery.getMessage().getMessageId());
+
+        ReplyKeyboard replyKeyboard = buttonService.callbackKeyboard(List.of(Map.of(AppConstant.BACK_TEXT, AppConstant.BACK_DATA + AppConstant.DATA_SHOW_USER_GROUPS)), 1, false);
+        botSender.changeReplyKeyboard(callbackQuery.getFrom().getId(), callbackQuery.getMessage().getMessageId(), replyKeyboard);
 
     }
 
@@ -83,7 +94,14 @@ public class CallbackServiceImpl implements CallbackService {
             case AppConstant.DATA_BACK_SHOW_REQUESTS -> {
                 backToListRequests(callbackQuery);
             }
+            case AppConstant.DATA_SHOW_USER_GROUPS -> {
+                backToListGroups(callbackQuery);
+            }
         }
+    }
+
+    private void backToListGroups(CallbackQuery callbackQuery) {
+
     }
 
     private void backToListRequests(CallbackQuery callbackQuery) {
@@ -111,8 +129,13 @@ public class CallbackServiceImpl implements CallbackService {
 
     private void buyJoinReq(CallbackQuery callbackQuery) {
         Long id = Long.parseLong(callbackQuery.getData().split(":")[1]);
+
+        if (stopManageBotRepository.findByGroupId(id).isPresent()) {
+            return;
+        }
+
         Group group = groupRepository.findByGroupId(id).orElseThrow();
-        if (group.getPriceForMonth() == null) {
+        if (group.getPriceForMonth() == null || group.getPriceForMonth() == 0) {
             UserOrder userOrder = new UserOrder(null,
                     callbackQuery.getFrom().getId(),
                     group.getGroupId(),

@@ -25,6 +25,7 @@ public interface AppConstant {
     String DONT_COMPLATED = "Пункт еще не готов к работу";
     String DONT_FREE = "Платный режим еще не готов";
     String DONT_HAVE_GROUPS = "Вы не гл.Админ который бот добавлен или попробуйте после час";
+    String SHOW_GROUP_PRICE = "Цена за месця что бы вступать ";
 
 
     String TEXT_BUY = "Купить доступ ";
@@ -44,4 +45,5 @@ public interface AppConstant {
     String STOPED_MANAGE_BOT = " бот для него не работает";
     String TEXT_START_MANAGE_GROUP = "Старт бот";
     String DATA_START_MANAGE_GROUP = "startManageBot:";
+    String DATA_SHOW_USER_GROUPS = "showUserGroups";
 }
