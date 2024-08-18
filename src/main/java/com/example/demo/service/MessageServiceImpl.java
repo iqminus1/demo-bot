@@ -184,7 +184,7 @@ public class MessageServiceImpl implements MessageService {
         for (Group group : groups) {
             Map<String, String> map = new HashMap<>();
             Optional<StopManageBot> optionalStopManageBot = stopManageBotRepository.findByGroupId(group.getGroupId());
-            sb.append(i.getAndIncrement()).append(" ").append(botSender.getChatName(group.getGroupId()).getTitle());
+            sb.append(i.getAndIncrement()).append(". ").append(botSender.getChatName(group.getGroupId()).getTitle());
 
             map.put(AppConstant.TEXT_CHANGE_PRICE,
                     AppConstant.DATA_CHANGE_PRICE + group.getGroupId());
