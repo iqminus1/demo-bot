@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.example.demo.utils.CommonUtils.setPrice;
+
 @RequiredArgsConstructor
 @Service
 public class MessageServiceImpl implements MessageService {
@@ -28,6 +30,8 @@ public class MessageServiceImpl implements MessageService {
     private final GroupRepository groupRepository;
     private final JoinRequestRepository joinRequestRepository;
     private final StopManageBotRepository stopManageBotRepository;
+    private final DontPayUserOrderRepository dontPayUserOrderRepository;
+    private final UserOrderRepository userOrderRepository;
 
     @Override
     public void process(Message message) {
@@ -53,10 +57,97 @@ public class MessageServiceImpl implements MessageService {
                     case AppConstant.MY_GROUPS:
                         myGroup(message);
                         break;
+                    case AppConstant.CODE_FOR_JOIN_CHAT:
+                        joinWithCode(message);
                 }
+            } else if (user.getState().equals(StateEnum.CHANGE_PRICE)) {
+                changePrice(message);
+            } else if (user.getState().equals(StateEnum.SEND_CODE_FOR_JOIN_CHAT)) {
+                checkingChatCode(message);
             }
 
 
+        }
+
+    }
+
+    private void checkingChatCode(Message message) {
+        String text = message.getText();
+        List<DontPayUserOrder> dontPayed = dontPayUserOrderRepository.findAllByUserId(message.getChatId());
+        if (dontPayed.isEmpty()) {
+            botSender.exe(AppConstant.DONT_HAVE_CHAT_PASS, message.getChatId(), null);
+            commonUtils.setState(message.getChatId(), StateEnum.START);
+            return;
+        }
+        Optional<DontPayUserOrder> optional = dontPayed.stream().filter(or -> or.getInvoice().equals(text)).findFirst();
+        if (optional.isEmpty()) {
+            botSender.exe(AppConstant.DONT_HAVE_ANY_CODE, message.getChatId(), null);
+            commonUtils.setState(message.getChatId(), StateEnum.START);
+            return;
+        }
+        DontPayUserOrder dontPayUserOrder = optional.get();
+        if (!dontPayUserOrder.getInvoice().equals(text)) {
+            if (dontPayUserOrder.getAttempt() == 1) {
+                dontPayUserOrderRepository.delete(dontPayUserOrder);
+                botSender.exe(AppConstant.DONT_HAVE_CHAT_PASS, message.getChatId(), start(message.getChatId()));
+                commonUtils.setState(message.getChatId(), StateEnum.START);
+                return;
+            }
+            dontPayUserOrder.setAttempt(dontPayUserOrder.getAttempt() - 1);
+            dontPayUserOrderRepository.save(dontPayUserOrder);
+            commonUtils.setState(message.getChatId(), StateEnum.START);
+            botSender.exe(AppConstant.DONT_EQUALS_PASS, message.getChatId(), start(message.getChatId()));
+            return;
+        }
+        List<JoinRequest> requests = joinRequestRepository.findAllByUserId(dontPayUserOrder.getUserId());
+        if (requests.isEmpty())
+            return;
+
+        Optional<JoinRequest> first = requests.stream().filter(r -> r.getGroupId().equals(dontPayUserOrder.getChatId())).findFirst();
+        if (first.isEmpty())
+            return;
+        JoinRequest joinRequest = first.get();
+        Optional<UserOrder> optionalUserOrder = userOrderRepository.findAllByUserId(message.getChatId()).stream().filter(or -> or.getChatId().equals(dontPayUserOrder.getChatId())).findFirst();
+        if (optionalUserOrder.isEmpty()) {
+            Timestamp expire = Timestamp.valueOf(LocalDateTime.now().plusMonths(dontPayUserOrder.getMonth()));
+            userOrderRepository.save(new UserOrder(null, dontPayUserOrder.getUserId(), dontPayUserOrder.getChatId(), expire));
+
+            joinRequestRepository.delete(joinRequest);
+            dontPayUserOrderRepository.delete(dontPayUserOrder);
+            botSender.acceptJoinRequest(joinRequest);
+            return;
+        }
+        UserOrder userOrder = optionalUserOrder.get();
+        Timestamp expire = Timestamp.valueOf(userOrder.getExpire().toLocalDateTime().plusMonths(dontPayUserOrder.getMonth()));
+        userOrder.setExpire(expire);
+        userOrderRepository.save(userOrder);
+        commonUtils.setState(message.getChatId(), StateEnum.START);
+        dontPayUserOrderRepository.delete(dontPayUserOrder);
+        joinRequestRepository.delete(joinRequest);
+        botSender.exe(AppConstant.SUCCESSFULLY_LENGTHENED, message.getChatId(), start(message.getChatId()));
+    }
+
+    private void joinWithCode(Message message) {
+        commonUtils.setState(message.getChatId(), StateEnum.SEND_CODE_FOR_JOIN_CHAT);
+        botSender.exe(AppConstant.SEND_CODE_TEXT, message.getChatId(), null);
+    }
+
+    private void changePrice(Message message) {
+        try {
+            Double price = Double.parseDouble(message.getText());
+            if (setPrice.containsKey(message.getChatId())) {
+
+                Long groupId = setPrice.get(message.getChatId());
+                groupRepository.findByGroupId(groupId).ifPresent(group -> {
+                    setPrice.remove(message.getChatId());
+                    group.setPriceForMonth(price);
+                    groupRepository.save(group);
+                    commonUtils.setState(message.getChatId(), StateEnum.START);
+                    botSender.exe(AppConstant.PRICE_CHANGED, message.getChatId(), null);
+                });
+            }
+        } catch (NumberFormatException e) {
+            botSender.exe(AppConstant.EXCEPTION_PRICE, message.getChatId(), null);
         }
 
     }
@@ -97,6 +188,7 @@ public class MessageServiceImpl implements MessageService {
             Timestamp expire = Timestamp.valueOf(LocalDateTime.now().plusMonths(dontPayPermission.getMonth()));
             Permission permission = new Permission(message.getChatId(), expire);
             permissionRepository.save(permission);
+            dontPayPermissionRepository.delete(dontPayPermission);
             commonUtils.setState(message.getChatId(), StateEnum.START);
             botSender.exe(AppConstant.SUCCESSFULLY_BUY, message.getChatId(), start(message.getChatId()));
             return;
@@ -129,6 +221,9 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public ReplyKeyboard start(Long chatId) {
         List<String> buttons = new ArrayList<>();
+        if (!dontPayUserOrderRepository.findAllByUserId(chatId).isEmpty()) {
+            buttons.add(AppConstant.CODE_FOR_JOIN_CHAT);
+        }
         if (!joinRequestRepository.findAllByUserId(chatId).isEmpty()) {
             buttons.add(AppConstant.CHANNEL_LIST);
         }
@@ -144,7 +239,14 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public SendMessage showUserRequests(Long chatId) {
-        List<JoinRequest> requests = joinRequestRepository.findAllByUserId(chatId);
+        List<JoinRequest> allJoinRequests = joinRequestRepository.findAllByUserId(chatId);
+        if (allJoinRequests.isEmpty()) {
+            throw new RuntimeException();
+        }
+        List<JoinRequest> requests = allJoinRequests.stream().filter(r -> {
+            Optional<StopManageBot> optional = stopManageBotRepository.findByGroupId(r.getGroupId());
+            return optional.isEmpty();
+        }).toList();
         if (requests.isEmpty()) {
             throw new RuntimeException();
         }
@@ -152,9 +254,6 @@ public class MessageServiceImpl implements MessageService {
         List<Map<String, String>> list = new ArrayList<>();
         AtomicInteger i = new AtomicInteger(1);
         requests.forEach(r -> {
-            if (stopManageBotRepository.findByGroupId(r.getGroupId()).isPresent()) {
-                return;
-            }
             sb.append(i.getAndIncrement()).append(". ");
             sb.append(botSender.getChatName(r.getGroupId()).getTitle()).append("\n-----------------\n");
 
