@@ -1,5 +1,7 @@
 package com.example.demo.utils;
 
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+
 public interface AppConstant {
     String START_MESSAGE = "Хола амигос";
     String BUY_PERMISSION = "Купить доступ";
@@ -20,12 +22,23 @@ public interface AppConstant {
     String CHANNEL_LIST = "Список каналы запроса";
     String CHANNEL_LIST_SHOW_TEXT = "Вот это который вы отправили запрос что бы вступать и который бот ответе за вступления";
     String PRICE_NULL = "Бесплатно на месяц";
-    String MY_MISTAKE = "От вас просим прощения я что то делал не так этот канал не платил что бы за ему бот работал";
+    String MY_MISTAKE = "От вас просим прощения я что то делал не так этот канал не платил что бы за ему бот работал ";
     String WITH_PRICE = "Выберите который вам нужно";
     String DONT_COMPLATED = "Пункт еще не готов к работу";
     String DONT_FREE = "Платный режим еще не готов";
     String DONT_HAVE_GROUPS = "Вы не гл.Админ который бот добавлен или попробуйте после час";
     String SHOW_GROUP_PRICE = "Цена за месця что бы вступать ";
+    String SEND_PRICE_FOR_CHANGE = "Отправте цени который вы хотите изменить";
+    String EXCEPTION_PRICE = "Что то вы ощиблис вот пример что бы изменить цену\n350000 или 0";
+    String PRICE_CHANGED = "Поздравляю вы изменили цену";
+    String SEND_CODE_TEXT = "Отправте кода который вы получила за покупку";
+    String RESEND_LINK = "Извените за не удобство вы бы не могли бы еще раз раскилинут на линк ";
+    String YOUR_CODE_FOR_JOIN = "Ваш код для вступления канал или группу который вы хотели купить ";
+    String CODE_FOR_JOIN_CHAT = "Исп. код для вступить канал или группу";
+    String DONT_HAVE_CHAT_PASS = "У вас нет заявления чтобы вступить на чат или уже срок изтек";
+    String DONT_HAVE_ANY_CODE = "Вы отпровили не ту код ";
+
+
 
 
     String TEXT_BUY = "Купить доступ ";
@@ -46,4 +59,5 @@ public interface AppConstant {
     String TEXT_START_MANAGE_GROUP = "Старт бот";
     String DATA_START_MANAGE_GROUP = "startManageBot:";
     String DATA_SHOW_USER_GROUPS = "showUserGroups";
+    String DATA_BUY_JOIN_REQ = "buyJoinReq:";
 }

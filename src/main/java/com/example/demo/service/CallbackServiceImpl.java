@@ -12,11 +12,9 @@ import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 
 import java.sql.Timestamp;
+import java.text.DecimalFormat;
 import java.time.LocalDateTime;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 import static com.example.demo.utils.CommonUtils.setPrice;
 
@@ -34,6 +32,8 @@ public class CallbackServiceImpl implements CallbackService {
     private final UserOrderRepository userOrderRepository;
     private final JoinRequestRepository joinRequestRepository;
     private final StopManageBotRepository stopManageBotRepository;
+    private final DontPayUserOrderRepository dontPayUserOrderRepository;
+    private final ChatJoinServiceImpl chatJoinServiceImpl;
 
     @Override
     public void process(CallbackQuery callbackQuery) {
@@ -48,13 +48,26 @@ public class CallbackServiceImpl implements CallbackService {
             removeJoinReq(callbackQuery);
         } else if (data.startsWith(AppConstant.BACK_DATA)) {
             back(callbackQuery);
-        } else if (data.startsWith(AppConstant.TEXT_CHANGE_PRICE)) {
+        } else if (data.startsWith(AppConstant.DATA_CHANGE_PRICE)) {
             changePrice(callbackQuery);
         } else if (data.startsWith(AppConstant.DATA_START_MANAGE_GROUP)) {
             startMangeBot(callbackQuery);
         } else if (data.startsWith(AppConstant.DATA_STOP_MANAGE_GROUP)) {
             stopManageBot(callbackQuery);
+        } else if (data.startsWith(AppConstant.DATA_BUY_JOIN_REQ)) {
+            sendInvoice(callbackQuery);
         }
+    }
+
+    private void sendInvoice(CallbackQuery callbackQuery) {
+        String[] split = callbackQuery.getData().split(":");
+        Long month = Long.parseLong(split[1]);
+        Long groupId = Long.parseLong(split[split.length - 1]);
+        Long userId = callbackQuery.getFrom().getId();
+        String invoice = invoiceService.generateInvoice();
+        dontPayUserOrderRepository.save(new DontPayUserOrder(null, userId, groupId, month, invoice, 5));
+        botSender.exe(AppConstant.YOUR_CODE_FOR_JOIN + invoice, userId, messageService.start(userId));
+        botSender.deleteMessage(userId, callbackQuery.getMessage().getMessageId());
     }
 
     private void stopManageBot(CallbackQuery callbackQuery) {
@@ -79,9 +92,17 @@ public class CallbackServiceImpl implements CallbackService {
         Long groupId = Long.parseLong(callbackQuery.getData().split(":")[1]);
         setPrice.put(callbackQuery.getFrom().getId(), groupId);
 
+        DecimalFormat decimalFormat = new DecimalFormat("###,###,###");
         commonUtils.setState(callbackQuery.getFrom().getId(), StateEnum.CHANGE_PRICE);
         Group group = groupRepository.findByGroupId(groupId).orElseThrow();
-        botSender.changeText(AppConstant.SHOW_GROUP_PRICE + group.getPriceForMonth(), callbackQuery.getFrom().getId(), callbackQuery.getMessage().getMessageId());
+        String append = " сум";
+        ;
+        if (group.getPriceForMonth() == 0.0) {
+            append = " это означаеть что бесплатно";
+        }
+        String text = AppConstant.SHOW_GROUP_PRICE + decimalFormat.format(group.getPriceForMonth()) + append + "\n\n" + AppConstant.SEND_PRICE_FOR_CHANGE;
+
+        botSender.changeText(text, callbackQuery.getFrom().getId(), callbackQuery.getMessage().getMessageId());
 
         ReplyKeyboard replyKeyboard = buttonService.callbackKeyboard(List.of(Map.of(AppConstant.BACK_TEXT, AppConstant.BACK_DATA + AppConstant.DATA_SHOW_USER_GROUPS)), 1, false);
         botSender.changeReplyKeyboard(callbackQuery.getFrom().getId(), callbackQuery.getMessage().getMessageId(), replyKeyboard);
@@ -101,6 +122,11 @@ public class CallbackServiceImpl implements CallbackService {
     }
 
     private void backToListGroups(CallbackQuery callbackQuery) {
+        Long userId = callbackQuery.getFrom().getId();
+        Integer messageId = callbackQuery.getMessage().getMessageId();
+        SendMessage userGroups = messageService.getUserGroups(userId);
+        botSender.changeText(userGroups.getText(), userId, messageId);
+        botSender.changeReplyKeyboard(userId, messageId, userGroups.getReplyMarkup());
 
     }
 
@@ -135,7 +161,7 @@ public class CallbackServiceImpl implements CallbackService {
         }
 
         Group group = groupRepository.findByGroupId(id).orElseThrow();
-        if (group.getPriceForMonth() == null || group.getPriceForMonth() == 0) {
+        if (group.getPriceForMonth() == null || group.getPriceForMonth() == 0.0d) {
             UserOrder userOrder = new UserOrder(null,
                     callbackQuery.getFrom().getId(),
                     group.getGroupId(),
@@ -147,8 +173,32 @@ public class CallbackServiceImpl implements CallbackService {
             botSender.deleteMessage(callbackQuery.getFrom().getId(), callbackQuery.getMessage().getMessageId());
             return;
         }
-        botSender.deleteMessage(callbackQuery.getFrom().getId(), callbackQuery.getMessage().getMessageId());
-        botSender.exe(AppConstant.DONT_FREE, callbackQuery.getFrom().getId(), null);
+        Long owner = group.getUserId();
+        Optional<Permission> optional = permissionRepository.findById(owner);
+        if (optional.isEmpty()) {
+            return;
+        }
+        Permission permission = optional.get();
+        List<Map<String, String>> list = new ArrayList<>();
+        if (permission.getExpire().after(new Date(System.currentTimeMillis() + 1 * 31 * 24 * 60 * 60))) {
+            list.add(
+                    Map.of(AppConstant.ONE_MONTH,
+                            AppConstant.DATA_BUY_JOIN_REQ + 1 + ":" + AppConstant.DATA_BUY + id));
+        } else return;
+        if (permission.getExpire().after(new Date(System.currentTimeMillis() + 6 * 31 * 24 * 60 * 60))) {
+            list.add(
+                    Map.of(AppConstant.SIX_MONTH,
+                            AppConstant.DATA_BUY_JOIN_REQ + 6 + ":" + AppConstant.DATA_BUY + id));
+        }
+        if (permission.getExpire().after(new Date(System.currentTimeMillis() + 12 * 31 * 24 * 60 * 60))) {
+            list.add(
+                    Map.of(AppConstant.ONE_YEAR,
+                            AppConstant.DATA_BUY_JOIN_REQ + 12 + ":" + AppConstant.DATA_BUY + id));
+        }
+        list.add(Map.of(AppConstant.BACK_TEXT, AppConstant.BACK_DATA + AppConstant.DATA_BACK_SHOW_REQUESTS));
+        ReplyKeyboard replyKeyboard = buttonService.callbackKeyboard(list, 1, false);
+        botSender.changeText(AppConstant.BUY_PERMISSION_DESCRIPTION, callbackQuery.getFrom().getId(), callbackQuery.getMessage().getMessageId());
+        botSender.changeReplyKeyboard(callbackQuery.getFrom().getId(), callbackQuery.getMessage().getMessageId(), replyKeyboard);
     }
 
     private void showPrice(CallbackQuery callbackQuery) {
@@ -162,7 +212,7 @@ public class CallbackServiceImpl implements CallbackService {
         }
         Long userId = group.getUserId();
         Permission permission = permissionRepository.findById(userId).orElseThrow();
-        if (permission.getExpire().after(new Date())) {
+        if (permission.getExpire().getTime() < System.currentTimeMillis()) {
             permissionRepository.delete(permission);
             botSender.deleteMessage(callbackQuery.getFrom().getId(), callbackQuery.getMessage().getMessageId());
             botSender.exe(AppConstant.MY_MISTAKE, callbackQuery.getFrom().getId(), null);

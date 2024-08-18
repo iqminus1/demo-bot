@@ -53,7 +53,7 @@ public class ChatMemberServiceImpl implements ChatMemberService {
 
     private void addToUserGroup(ChatMemberUpdated chatMember) {
         Long creator = botSender.getOwner(chatMember.getChat().getId());
-        Group group = new Group(null, chatMember.getChat().getId(), creator, null);
+        Group group = new Group(null, chatMember.getChat().getId(), creator, 0.0);
         groupRepository.save(group);
     }
 

@@ -6,15 +6,13 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import lombok.*;
 
-import java.sql.Timestamp;
-
 @AllArgsConstructor
 @NoArgsConstructor
 @Setter
 @Getter
 @ToString
 @Entity
-public class UserOrder {
+public class DontPayUserOrder {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -23,5 +21,9 @@ public class UserOrder {
 
     private Long chatId;
 
-    private Timestamp expire;
+    private Long month;
+
+    private String invoice;
+
+    private Integer attempt;
 }
