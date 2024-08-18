@@ -31,6 +31,7 @@ public class CallbackServiceImpl implements CallbackService {
     private final PermissionRepository permissionRepository;
     private final UserOrderRepository userOrderRepository;
     private final JoinRequestRepository joinRequestRepository;
+    private final StopManageBotRepository stopManageBotRepository;
 
     @Override
     public void process(CallbackQuery callbackQuery) {
@@ -45,7 +46,35 @@ public class CallbackServiceImpl implements CallbackService {
             removeJoinReq(callbackQuery);
         } else if (data.startsWith(AppConstant.BACK_DATA)) {
             back(callbackQuery);
+        } else if (data.startsWith(AppConstant.TEXT_CHANGE_PRICE)) {
+            changePrice(callbackQuery);
+        } else if (data.startsWith(AppConstant.DATA_START_MANAGE_GROUP)) {
+            startMangeBot(callbackQuery);
+        } else if (data.startsWith(AppConstant.DATA_STOP_MANAGE_GROUP)) {
+            stopManageBot(callbackQuery);
         }
+    }
+
+    private void stopManageBot(CallbackQuery callbackQuery) {
+        Long groupId = Long.parseLong(callbackQuery.getData().split(AppConstant.DATA_STOP_MANAGE_GROUP)[1]);
+        stopManageBotRepository.save(new StopManageBot(null, groupId));
+        sendStartStopMessage(callbackQuery);
+    }
+
+    private void sendStartStopMessage(CallbackQuery callbackQuery) {
+        SendMessage userGroups = messageService.getUserGroups(callbackQuery.getFrom().getId());
+        botSender.changeText(userGroups.getText(), callbackQuery.getFrom().getId(), callbackQuery.getMessage().getMessageId());
+        botSender.changeReplyKeyboard(callbackQuery.getFrom().getId(), callbackQuery.getMessage().getMessageId(), userGroups.getReplyMarkup());
+    }
+
+    private void startMangeBot(CallbackQuery callbackQuery) {
+        Long groupId = Long.parseLong(callbackQuery.getData().split(AppConstant.DATA_START_MANAGE_GROUP)[1]);
+        stopManageBotRepository.findByGroupId(groupId).ifPresent(stopManageBotRepository::delete);
+        sendStartStopMessage(callbackQuery);
+    }
+
+    private void changePrice(CallbackQuery callbackQuery) {
+
     }
 
     private void back(CallbackQuery callbackQuery) {

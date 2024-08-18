@@ -10,4 +10,5 @@ public interface MessageService {
     ReplyKeyboard start(Long chatId);
 
     SendMessage showUserRequests(Long chatId);
+    SendMessage getUserGroups(Long chatId);
 }

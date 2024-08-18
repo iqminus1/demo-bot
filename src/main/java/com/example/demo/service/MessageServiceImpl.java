@@ -1,14 +1,8 @@
 package com.example.demo.service;
 
-import com.example.demo.entity.DontPayPermission;
-import com.example.demo.entity.JoinRequest;
-import com.example.demo.entity.Permission;
-import com.example.demo.entity.User;
+import com.example.demo.entity.*;
 import com.example.demo.enums.StateEnum;
-import com.example.demo.repository.DontPayPermissionRepository;
-import com.example.demo.repository.GroupRepository;
-import com.example.demo.repository.JoinRequestRepository;
-import com.example.demo.repository.PermissionRepository;
+import com.example.demo.repository.*;
 import com.example.demo.utils.AppConstant;
 import com.example.demo.utils.CommonUtils;
 import lombok.RequiredArgsConstructor;
@@ -19,10 +13,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @RequiredArgsConstructor
@@ -36,6 +27,7 @@ public class MessageServiceImpl implements MessageService {
     private final PermissionRepository permissionRepository;
     private final GroupRepository groupRepository;
     private final JoinRequestRepository joinRequestRepository;
+    private final StopManageBotRepository stopManageBotRepository;
 
     @Override
     public void process(Message message) {
@@ -70,7 +62,7 @@ public class MessageServiceImpl implements MessageService {
     }
 
     private void myGroup(Message message) {
-        botSender.exe(AppConstant.DONT_COMPLATED, message.getChatId(), null);
+        botSender.exe(getUserGroups(message.getChatId()));
     }
 
     private void showRequestList(Message message) {
@@ -175,4 +167,44 @@ public class MessageServiceImpl implements MessageService {
         sendMessage.setReplyMarkup(replyKeyboard);
         return sendMessage;
     }
+
+    @Override
+    public SendMessage getUserGroups(Long chatId) {
+        List<Group> groups = groupRepository.findAllByUserId(chatId);
+        if (groups.isEmpty()) {
+            botSender.exe(AppConstant.DONT_HAVE_GROUPS, chatId, null);
+            throw new RuntimeException();
+        }
+        AtomicInteger i = new AtomicInteger(1);
+        StringBuilder sb = new StringBuilder();
+        List<Map<String, String>> list = new ArrayList<>();
+        Map<String, String> map = new HashMap<>();
+        for (Group group : groups) {
+            Optional<StopManageBot> optionalStopManageBot = stopManageBotRepository.findByGroupId(group.getGroupId());
+            sb.append(i.getAndIncrement()).append(" ").append(botSender.getChatName(group.getGroupId()).getTitle());
+
+            map.put(AppConstant.TEXT_CHANGE_PRICE,
+                    AppConstant.DATA_CHANGE_PRICE + group.getGroupId());
+
+            if (optionalStopManageBot.isEmpty()) {
+                map.put(
+                        AppConstant.TEXT_STOP_MANAGE_GROUP,
+                        AppConstant.DATA_STOP_MANAGE_GROUP + group.getGroupId());
+                continue;
+            }
+            sb.append(" ").append(AppConstant.STOPED_MANAGE_BOT);
+            map.put(
+                    AppConstant.TEXT_START_MANAGE_GROUP,
+                    AppConstant.DATA_START_MANAGE_GROUP + group.getGroupId());
+
+        }
+        list.add(map);
+        ReplyKeyboard replyKeyboard = buttonService.callbackKeyboard(list, 1, false);
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(chatId);
+        sendMessage.setText(sb.toString());
+        sendMessage.setReplyMarkup(replyKeyboard);
+        return sendMessage;
+    }
+
 }
