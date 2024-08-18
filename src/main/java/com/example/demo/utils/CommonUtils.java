@@ -33,17 +33,18 @@ public class CommonUtils {
                 .orElse(null);
 
         if (user == null) {
-            user = userRepository.findById(chatId)
-                    .orElseGet(() -> {
-                        User newUser = new User(chatId, StateEnum.START);
-                        userRepository.save(newUser);
-                        users.add(newUser);
-                        return newUser;
-                    });
+            Optional<User> optionalUser = userRepository.findById(chatId);
+            if (optionalUser.isPresent()) {
+                user = optionalUser.get();
+            } else {
+                user = new User(chatId, StateEnum.START);
+                userRepository.save(user);
+            }
+            users.add(user);
         }
+
         return user;
     }
-
     @Scheduled(fixedRate = 20, timeUnit = TimeUnit.MINUTES)
     public void save() {
         userRepository.saveAll(users);

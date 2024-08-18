@@ -132,7 +132,7 @@ public class MessageServiceImpl implements MessageService {
         if (!joinRequestRepository.findAllByUserId(chatId).isEmpty()) {
             buttons.add(AppConstant.CHANNEL_LIST);
         }
-        if (groupRepository.findByUserId(chatId).isPresent()) {
+        if (!groupRepository.findAllByUserId(chatId).isEmpty()) {
             buttons.add(AppConstant.MY_GROUPS);
         }
         if (dontPayPermissionRepository.findById(chatId).isPresent()) {
@@ -184,7 +184,7 @@ public class MessageServiceImpl implements MessageService {
         for (Group group : groups) {
             Map<String, String> map = new HashMap<>();
             Optional<StopManageBot> optionalStopManageBot = stopManageBotRepository.findByGroupId(group.getGroupId());
-            sb.append(i.getAndIncrement()).append(" ").append(botSender.getChatName(group.getGroupId()).getTitle()).append("\n");
+            sb.append(i.getAndIncrement()).append(" ").append(botSender.getChatName(group.getGroupId()).getTitle());
 
             map.put(AppConstant.TEXT_CHANGE_PRICE,
                     AppConstant.DATA_CHANGE_PRICE + group.getGroupId());
@@ -194,9 +194,10 @@ public class MessageServiceImpl implements MessageService {
                         AppConstant.TEXT_STOP_MANAGE_GROUP,
                         AppConstant.DATA_STOP_MANAGE_GROUP + group.getGroupId());
                 list.add(map);
+                sb.append("\n");
                 continue;
             }
-            sb.append(" ").append(AppConstant.STOPED_MANAGE_BOT);
+            sb.append(" ").append(AppConstant.STOPED_MANAGE_BOT).append("\n");
             map.put(
                     AppConstant.TEXT_START_MANAGE_GROUP,
                     AppConstant.DATA_START_MANAGE_GROUP + group.getGroupId());
