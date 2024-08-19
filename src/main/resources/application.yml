@@ -3,7 +3,7 @@ server:
 spring:
   datasource:
     username: postgres
-    password: 123
+    password: ismoil_0709
     url: jdbc:postgresql://localhost:5432/demo_telegram_bot_db
     driver-class-name: org.postgresql.Driver
   jpa:
